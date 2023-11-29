@@ -19,21 +19,32 @@ object Main {
 
     // function for reading in data from the data.txt file
     def getData(): Option[Map[String, List[Int]]] = {
-        var appData: Map[String, List[Int]] = Map() // declares the map to store the data and ultimately return
         try { // catches exceptions thrown from reading in the file
-            for (line <- Source.fromFile("data.txt").getLines()) { // loops through the file
-                val lineSegments = line.split(',').map(_.trim).toList // splits read line by ,, trims it and adds to list
-                val splitSegments = lineSegments.splitAt(1) // splits the trimmed data into the key and the
-                val values: List[Int] = splitSegments._2.map(_.toInt) // parses the data to list of ints
-
-                appData = appData ++ Map(splitSegments._1.head -> values) // adds key and data to map
-            }
+            val source = Source.fromFile("data.txt")
+            breakdownData(source.getLines().toList, 0)
             Some(appData) // returns success containing the data
         } catch { // catches exceptions thrown from reading in the file
             case _:Exception =>
                 None // returns None indicating an error occurred
         }
     }
+
+  def breakdownData(lines: List[String], index: Int): Unit = {
+      if (index < lines.length) {
+          val curLine: List[String] = lines(index).split(',').toList
+          val key: String = curLine.head
+          val prices: List[Int] = curLine.tail.map(_.trim.toInt)
+
+          if (appData.isEmpty) {
+              val newData = Map(key -> prices)
+              appData = newData
+          } else {
+              appData += (key -> prices)
+          }
+
+          breakdownData(lines, index + 1)
+      }
+  }
 
     @tailrec
     def mainMenu(stop: Boolean): Unit = {
@@ -67,7 +78,7 @@ object Main {
                     mainMenu(false) // calls main menu telling it to continue
 
                 case 3 =>
-                    displayMedianPrices() // calls function to showing median prices for each product
+                    displayMedianPrices(0) // calls function to showing median prices for each product
                     mainMenu(false) // calls main menu telling it to continue
 
                 case 4 =>
@@ -80,7 +91,7 @@ object Main {
                     mainMenu(false) // calls main menu telling it to continue
 
                 case 6 =>
-                    buildFoodBasket() // calls function allowing user to create a food basket
+                    buildFoodBasket(Map(), false) // calls function allowing user to create a food basket
                     mainMenu(false) // calls main menu telling it to continue
             }
         } else {
@@ -112,7 +123,7 @@ object Main {
         if (index < appData.toList.length) { // checks if still in range of data
             val keys: List[String] = appData.keys.toList // produces a list of keys
             val values = appData(keys(index)) // gets the data associated with the keys
-            println(keys(index) + " -> " + values.tail(0) + "p") // prints the key and the current price
+            println(keys(index) + " -> " + values.last + "p") // prints the key and the current price
             displayCurrentPrices(index + 1) // calls function again for next product
         }
     }
@@ -149,8 +160,16 @@ object Main {
         }
     }
 
-    def displayMedianPrices(): Unit = {
-        println("Median prices not implemented")
+    def displayMedianPrices(index:Int): Unit = {
+        if (index < appData.toList.length) {
+            val keys: List[String] = appData.keys.toList
+            var prices: List[Int] = appData(keys(index))
+            prices = prices.sorted
+
+            val median = (prices(11) + prices(12)) / 2
+            println(keys(index) + " -> " + median + "p")
+            displayMedianPrices(index + 1)
+        }
     }
 
     @tailrec
@@ -159,7 +178,7 @@ object Main {
             val keys = appData.keys.toList // gets list of keys
             val values: List[Int] = appData(keys(index)) // gets values of key associated with value at appdata(index)
 
-            val change:Int = values(23) - values(17) // calculates change across past six months
+            val change:Int = values(23) - values(18) // calculates change across past six months
 
             if (change > largestRise) { // checks if calculated change is greater than the current highest
                 displayLargestPriceRise(index + 1, keys(index), change) // calls method again for next product with new parameters
@@ -172,34 +191,31 @@ object Main {
     }
 
     def compareAveragePrices(chosen: Map[String, Int]): Unit = {
-        var chosenTemp: Map[String, Int] = Map()
-        if (chosen.toList.nonEmpty) {
-             chosenTemp = chosen
-        }
-
         if (chosen.toList.length < 2) {
 
             val keys: List[String] = appData.keys.toList
             showAllKeys(keys, 0)
             val input: Int = getMenuResponse(false, keys.length + 1)
-            val sum = appData(keys(input - 1)).foldLeft(0)(_ + _)
-            val average = sum / keys.length
+            val sum = appData(keys(input - 1)).sum
+            val average = sum / 24
 
-            chosenTemp ++ Map(keys(input - 1) -> average)
+            val chosenTemp: Map[String, Int] = chosen + (keys(input - 1) -> average)
             compareAveragePrices(chosenTemp)
         } else {
             val keys = chosen.keys.toList
+            println("")
             println(keys.head + " has an average price of " + chosen(keys.head) + "p")
-            println(keys.tail + " has an average price of " + chosen(keys(1)) + "p")
+            println(keys.tail.head + " has an average price of " + chosen(keys(1)) + "p")
 
             if (chosen(keys.head) > chosen(keys(1))) {
-                println("There is a difference of " + (chosen(keys.head) - chosen(keys(1))))
+                println("There is a difference of " + (chosen(keys.head) - chosen(keys(1))) + "p")
             } else {
-                println("There is a difference of " + (chosen(keys(1)) - chosen(keys.head)))
+                println("There is a difference of " + (chosen(keys(1)) - chosen(keys.head)) + "p")
             }
         }
     }
 
+    @tailrec
     def showAllKeys(keys:List[String], index:Int): Unit =  {
         if (index < keys.length) {
             println((index + 1) + ": " + keys(index))
@@ -207,7 +223,47 @@ object Main {
         }
     }
 
-    def buildFoodBasket(): Unit = {
-        println("Food baskets not implemented!")
+    def getAmount(): Float = {
+        try {
+          print("Enter amount to buy (kg / litres): ")
+          readLine().toFloat
+        } catch {
+          case _:Exception =>
+            println("Invalid quantity!")
+            getAmount()
+        }
+    }
+    def buildFoodBasket(basket: Map[String, Float], stop:Boolean): Unit = {
+        if (!stop) {
+            showAllKeys(appData.keys.toList, 0)
+            println("0: Evaluate Basket")
+            val input = getMenuResponse(false, 10)
+
+            if (input == 0) {
+                buildFoodBasket(basket, true)
+            } else {
+                val key: String = appData.keys.toList(input - 1)
+                val newBasket: Map[String, Float] = basket + (key -> getAmount())
+                buildFoodBasket(newBasket, false)
+            }
+        } else {
+            println("")
+            if (basket.isEmpty) {
+                println("Basket is empty!")
+            } else {
+                evaluateBasket(basket, 0, 0)
+            }
+        }
+    }
+
+    def evaluateBasket(basket: Map[String, Float], total: Int, index: Int): Unit = {
+        if (index < basket.toList.length) {
+            val curKey = basket.keys.toList(index)
+            val newTotal: Int = (basket(curKey) * appData(curKey).last).toInt
+
+            evaluateBasket(basket, total + newTotal, index + 1)
+        } else {
+            println("Your basket costs " + total  + "p.\n\rIt contains " + basket.toList.length + " items.")
+        }
     }
 }
