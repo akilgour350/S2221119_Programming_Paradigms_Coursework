@@ -61,7 +61,7 @@ object Main {
             println("6: Build Food Basket") // display option 6
             println("0: Quit") // display option 0 to quit
 
-            val input = getMenuResponse(false, 7) // gets user's input
+            val input = getMenuResponse(false, 6, 0) // gets user's input
             println("") // puts a space between menu and output
 
             input match { // compares input with various options
@@ -100,20 +100,20 @@ object Main {
     }
 
     // function to get a menu response that catches any errors in input
-    def getMenuResponse(valid: Boolean, maxChoice: Int): Int = {
+    def getMenuResponse(valid: Boolean, maxChoice: Int, minChoice: Int): Int = {
         try {
             print("Choose an option: ") // ask user to pick an option
             val input:Int = readLine().toInt // gets user's selection and parse to Int
-            if (input < 0 || input > maxChoice) { // checks input is within valid range
+            if (input < minChoice || input > maxChoice) { // checks input is within valid range
                 println("Invalid selection!") // if outside range, shows error message
-                getMenuResponse(false, maxChoice) // calls the function again to try again
+                getMenuResponse(false, maxChoice, minChoice) // calls the function again to try again
             } else { // if input is valid
                 input // returns the input to the calling function
             }
         } catch {
             case _:Exception =>
                 println("Invalid selection!") // if the input wasnt an Int, shows error message
-                getMenuResponse(false, maxChoice) // calls function again
+                getMenuResponse(false, maxChoice, minChoice) // calls function again
         }
     }
 
@@ -195,7 +195,7 @@ object Main {
 
             val keys: List[String] = appData.keys.toList
             showAllKeys(keys, 0)
-            val input: Int = getMenuResponse(false, keys.length + 1)
+            val input: Int = getMenuResponse(false, keys.length + 1, 1)
             val sum = appData(keys(input - 1)).sum
             val average = sum / 24
 
@@ -237,7 +237,7 @@ object Main {
         if (!stop) {
             showAllKeys(appData.keys.toList, 0)
             println("0: Evaluate Basket")
-            val input = getMenuResponse(false, 10)
+            val input = getMenuResponse(false, 10, 0)
 
             if (input == 0) {
                 buildFoodBasket(basket, true)
